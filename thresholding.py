@@ -44,11 +44,7 @@ def mean_intensity(img):
 
 #Append results to excel sheet
 def append_results(path, row_dict, sheet_name="Sheet1"):
-    """
-    Append a dictionary of results as a new row to an Excel file.
-    Creates the file if it doesn't exist.
-    """
-    new_df = pd.DataFrame([new_row])
+    new_df = pd.DataFrame([row_dict])
 
     try:
         # Load existing workbook
@@ -68,9 +64,9 @@ def append_results(path, row_dict, sheet_name="Sheet1"):
         print(f"PermissionError: {path} is locked (Excel or OneDrive may have it open). Close it and try again.")
 
 
-
-'''Start of program execution'''
-
+'''
+Start of program execution
+'''
 #Open file dialog to select image
 root = tk.Tk()
 root.withdraw()  # Hide the root window
