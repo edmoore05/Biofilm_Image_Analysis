@@ -11,9 +11,13 @@ import os
 excel_file_location = "C:\\Users\\Ethan\\OneDrive - Westminster College\\Lignin_Biofilm_Project\\python_image_analysis.xlsx"
 
 #Filtering so that pixels below 5 and above 84 are set to 0
-low_cutoff = 5
-hight_cutoff = 84
+low_cutoff = float()
+hight_cutoff = float()
 def filter_image(img, low_cutoff=5, high_cutoff=84):
+    mean = mean_intensity(img)
+    std = np.std(img)
+    low_cutoff = mean - std*10
+    hight_cutoff = mean + std*10
     gray_image_filtered = np.copy(gray_image)
     gray_image_filtered[gray_image < low_cutoff] = 0
     gray_image_filtered[gray_image > hight_cutoff] = 0
@@ -96,7 +100,9 @@ thresh_guass = cv2.adaptiveThreshold(
 percentage = white_area_percentage(thresh_guass)
 median_val = median_intensity(gray_image_filtered)
 mean_val = mean_intensity(gray_image_filtered)
-print(f'Image: {os.path.basename(file)}\nPercent coverage: {percentage:.2f}% \nMedian: {median_val} \nMean: {mean_val}')
+print(f'Image: {os.path.basename(file)}\nPercent coverage: {percentage:.2f}% \nMedian: {median_val} \nMean: {mean_val}\nStd: {np.std(gray_image_filtered)}')
+#save_path = 'C:/Users/Ethan/Downloads/gray_image_filtered_1.png'
+#cv2.imwrite(save_path, gray_image_filtered)
 
 # #Check you have an excel file location then adds the data
 # if excel_file_location is not None:
@@ -106,4 +112,3 @@ print(f'Image: {os.path.basename(file)}\nPercent coverage: {percentage:.2f}% \nM
 #                'Mean_Intensity': mean_val
 #     }
 #     append_results(excel_file_location, new_row, sheet_name='Sheet1')
-
