@@ -94,8 +94,8 @@ thresh_guass = cv2.adaptiveThreshold(
 
 #Calculates the values of %Area, Median, and Mean
 percentage = white_area_percentage(thresh_guass)
-median_val = median_intensity(thresh_guass)
-mean_val = mean_intensity(thresh_guass)
+median_val = median_intensity(gray_image_filtered)
+mean_val = mean_intensity(gray_image_filtered)
 print(f'Image: {os.path.basename(file)}\npercent coverage: {percentage:.2f}% \nMedian: {median_val} \nMean: {mean_val}')
 
 # #Check you have an excel file location then adds the data
