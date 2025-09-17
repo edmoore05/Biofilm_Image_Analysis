@@ -8,9 +8,10 @@ import pandas as pd
 import os
 
 #This is your excel file location
+#If you are changing it paste it below to make sure the syntax is correct first
 excel_file_location = "C:\\Users\\Ethan\\OneDrive - Westminster College\\Lignin_Biofilm_Project\\python_image_analysis.xlsx"
 
-#Filtering so that pixels below 5 and above 84 are set to 0
+#Filtering so that pixels that are outside the range of mean +/- 10*std are set to 0
 low_cutoff = float()
 hight_cutoff = float()
 def filter_image(img, low_cutoff=5, high_cutoff=84):
@@ -23,7 +24,7 @@ def filter_image(img, low_cutoff=5, high_cutoff=84):
     gray_image_filtered[gray_image > hight_cutoff] = 0
     return gray_image_filtered
 
-#Blur
+#Blurs image as a another way to decrease noise
 def blur_image(img, kernel_size=(5,5), sigma=0):
     blur = cv2.GaussianBlur(img, (5,5), 0)
     return blur
@@ -71,44 +72,55 @@ def append_results(path, row_dict, sheet_name="Sheet1"):
 '''
 Start of program execution
 '''
-#Open file dialog to select image
+#Open file dialog to select a folder
 root = tk.Tk()
 root.withdraw()  # Hide the root window
-#img that user selects
-file = filedialog.askopenfilename(title='Select an image file')
-if not file:
+#folder that user selects
+folder_path = filedialog.askdirectory(title='Select an image folder')
+if not folder_path:
     print("No file selected. Exiting.")
     exit()
-img = cv2.imread(f'{file}', cv2.IMREAD_UNCHANGED)
+for file in os.listdir(folder_path):
+    #Check if file is a .tif, .tiff
+    ext = os.path.splitext(file)[1].lower()  # get file extension
+    valid_exts = ['.tif', '.tiff']
+    if ext not in valid_exts:
+        print(f"Skipping (not an image): {file}")
+        continue
 
-#Sets image colors to B&W
-gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#Filters the image so that pixels below 5 and above 84 are set to 0
-gray_image_filtered = filter_image(gray_image, low_cutoff, hight_cutoff)
+    file_path = os.path.join(folder_path, file)
+    img = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
 
-#Blurs image so that thresholding is cleaner
-blur = blur_image(gray_image_filtered, (5,5), 0)
-#Guassian thresholding method
-thresh_guass = cv2.adaptiveThreshold(
-    blur, 255,
-    cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-    cv2.THRESH_BINARY,
-    725, 0
-)
+    #Sets image colors to B&W
+    gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray_image_filtered = filter_image(gray_image, low_cutoff, hight_cutoff)
 
-#Calculates the values of %Area, Median, and Mean
-percentage = white_area_percentage(thresh_guass)
-median_val = median_intensity(gray_image_filtered)
-mean_val = mean_intensity(gray_image_filtered)
-print(f'Image: {os.path.basename(file)}\nPercent coverage: {percentage:.2f}% \nMedian: {median_val} \nMean: {mean_val}\nStd: {np.std(gray_image_filtered)}')
-#save_path = 'C:/Users/Ethan/Downloads/gray_image_filtered_1.png'
-#cv2.imwrite(save_path, gray_image_filtered)
+    blur = blur_image(gray_image_filtered, (5,5), 0)
 
-# #Check you have an excel file location then adds the data
-# if excel_file_location is not None:
-#     new_row = {'Image_Name': os.path.basename(file), 
-#                'White_Area_Percentage': percentage, 
-#                'Median_Intensity': median_val, 
-#                'Mean_Intensity': mean_val
-#     }
-#     append_results(excel_file_location, new_row, sheet_name='Sheet1')
+    #Guassian thresholding method
+    thresh_guass = cv2.adaptiveThreshold(
+        blur, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,  #You can also try 'cv2.ADAPTIVE_THRESH_MEAN_C' or 'cv2.THRESH_OTSU'
+        cv2.THRESH_BINARY,
+        725, 0
+    )
+
+    percentage = white_area_percentage(thresh_guass)
+    median_val = median_intensity(gray_image_filtered)
+    mean_val = mean_intensity(gray_image_filtered)
+
+    '''
+    Uncomment to see the images
+    '''
+    #save_path = 'C:/Users/Ethan/Downloads/gray_image_filtered_1.png'
+    #cv2.imwrite(save_path, gray_image_filtered)
+
+    print(f'Image: {os.path.basename(file)}\nPercent coverage: {percentage:.2f}% \nMedian: {median_val} \nMean: {mean_val}\nStd: {np.std(gray_image_filtered)}')
+    # #Check you have an excel file location then adds the data
+    # if excel_file_location is not None:
+    #     new_row = {'Image_Name': os.path.basename(file_path), 
+    #                'White_Area_Percentage': percentage, 
+    #                'Median_Intensity': median_val, 
+    #                'Mean_Intensity': mean_val
+    #     }
+    #     append_results(excel_file_location, new_row, sheet_name='Sheet1')
