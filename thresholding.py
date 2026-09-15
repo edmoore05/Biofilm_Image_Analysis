@@ -6,10 +6,11 @@ from tkinter import filedialog
 from openpyxl import load_workbook
 import pandas as pd
 import os
+from pathlib import Path
 
 #This is your excel file location
 #If you are changing it paste it below to make sure the syntax is correct first
-excel_file_location = "C:\\Users\\Ethan\\OneDrive - Westminster College\\Lignin_Biofilm_Project\\python_image_analysis.xlsx"
+excel_file_location = Path.cwd() / "Image_analysis.xlsx"
 
 #Filtering so that pixels that are outside the range of mean +/- 10*std are set to 0
 def filter_image(img):
@@ -21,8 +22,9 @@ def filter_image(img):
     gray_image_filtered[(img < low_cutoff) | (img > high_cutoff)] = 0
     return gray_image_filtered
 
-#Blurs image as a another way to decrease noise
-def blur_image(img, kernel_size=(5,5), sigma=0):
+#Blurs image as a another way to decrease noise: by increasing kernel size you increase the amount of blurring 
+#Sigma is the variance within the kernel(Sigma of 1 keeps blurring localized)
+def blur_image(img, kernel_size=(5,5), sigma=1):
     blur = cv2.GaussianBlur(img, kernel_size, sigma)
     return blur
 
