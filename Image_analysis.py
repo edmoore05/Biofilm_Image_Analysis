@@ -3,14 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tkinter as tk
 from tkinter import filedialog
-from openpyxl import load_workbook
 import pandas as pd
 import os
-from pathlib import Path
-
-#This is your excel file location
-#If you are changing it paste it below to make sure the syntax is correct first
-excel_file_location = Path.cwd() / "Image_analysis.xlsx"
 
 #Filtering so that pixels that are outside the range of mean +/- 10*std are set to 0
 def filter_image(img):
@@ -22,7 +16,7 @@ def filter_image(img):
     gray_image_filtered[(img < low_cutoff) | (img > high_cutoff)] = 0
     return gray_image_filtered
 
-#Blurs image as a another way to decrease noise: by increasing kernel size you increase the amount of blurring 
+#Blurs image as a another way to decrease noise: by increasing kernel size you increase the amount of blurring
 #Sigma is the variance within the kernel(Sigma of 1 keeps blurring localized)
 def blur_image(img, kernel_size=(5,5), sigma=1):
     blur = cv2.GaussianBlur(img, kernel_size, sigma)
@@ -34,7 +28,6 @@ def white_area_percentage(img):
     total_pixels = img.size
     percentage = (white_pixels / total_pixels) * 100
     return percentage
-
 
 #Median intensity of pixels
 def median_intensity(img):
@@ -49,13 +42,25 @@ def mean_intensity(img):
 '''
 Start of program execution
 '''
-#Open file dialog to select a folder
 root = tk.Tk()
 root.withdraw()  # Hide the root window
-#folder that user selects
+
+#Folder that user selects containing the images to analyze
 folder_path = filedialog.askdirectory(title='Select an image folder')
 if not folder_path:
-    print("No file selected. Exiting.")
+    print("No folder selected. Exiting.")
+    exit()
+
+#Ask the user where they want the results saved, defaulting to a .csv
+#(CSV avoids the OneDrive save-lag issue that .xlsx files can run into)
+save_path = filedialog.asksaveasfilename(
+    title="Choose where to save the results",
+    defaultextension=".csv",
+    filetypes=[("CSV file", "*.csv")],
+    initialfile="Image_analysis.csv"
+)
+if not save_path:
+    print("No save location selected. Exiting.")
     exit()
 
 #list used for holding results until for loop is finished
@@ -90,32 +95,21 @@ for file in os.listdir(folder_path):
     median_val = median_intensity(gray_image_filtered)
     mean_val = mean_intensity(gray_image_filtered)
 
-    '''
-    Uncomment to see the images
-    '''
-    #save_path = 'C:/Users/Ethan/Downloads/gray_image_filtered_1.png'
-    #cv2.imwrite(save_path, gray_image_filtered)
+    results.append({
+        "Image_Name": file,
+        "White_Area_Percentage": round(percentage, 2),
+        "Median_Intensity": round(median_val, 2),
+        "Mean_Intensity": round(mean_val, 2),
+        "Std_Dev": round(np.std(gray_image_filtered), 2)
+    })
 
-    #Check you have an excel file location then adds the data
-    if excel_file_location is not None:
-        results.append({
-          "Image_Name": file,
-          "White_Area_Percentage": round(percentage, 2),
-          "Median_Intensity": round(median_val, 2),
-          "Mean_Intensity": round(mean_val, 2),
-          "Std_Dev": round(np.std(gray_image_filtered), 2)
-        })
-    else:
-        print("No excel file location specified. Skipping saving results.")
-        break
-    
     #Prints results to console
     print(f'Image: {os.path.basename(file)}\nPercent coverage: {percentage:.2f}% \nMedian: {median_val:.2f} \nMean: {mean_val:.2f}\nStd: {np.std(gray_image_filtered):.2f}\n-------------------------')
 
-#Saves results to excel file
+#Saves results to the file the user chose
 if results:
     df = pd.DataFrame(results)
-#     df.to_excel(excel_file_location, sheet_name="Sheet1", index=False)
-#     print(f"Saved {len(results)} results to {excel_file_location}")
+    df.to_csv(save_path, index=False)
+    print(f"Saved {len(results)} results to {save_path}")
 else:
     print("No results to save.")
