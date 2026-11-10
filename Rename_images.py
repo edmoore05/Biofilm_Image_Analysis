@@ -45,7 +45,7 @@ def load_last_folder():
             with open(CONFIG_FILE, "r") as f:
                 data = json.load(f)
                 return data.get("last_folder", "")
-        except:
+        except (json.JSONDecodeError, OSError):
             pass
     return ""
 
@@ -65,19 +65,70 @@ def get_images_from_folder(folder_path):
 
 def rename_images_with_pattern(folder_path, prefix):
     images = get_images_from_folder(folder_path)
+    if not images:
+        print("No images found in that folder.")
+        return
+
+    invalid = '<>:"/\\|?*'
+    if any(char in prefix for char in invalid):
+        print(f"Prefix cannot contain any of these characters: {invalid}")
+        return
+
     images.sort(key=lambda x: os.path.getctime(x))  # Makes sure ordered by the time the file was created
+    if len(images) % 2 != 0:
+        leftover = os.path.basename(images[-1])
+        print(f'Odd number of images ({len(images)}). "{leftover}" was not renamed.')
+
     max_num = int(len(images)/2)
+    if max_num == 0:
+        print("Need at least two images (one T and one B). Nothing was renamed.")
+        return
+
     # Create naming sequence: T1..Tn + B1..Bn
     labels = [f"T{i}" for i in range(1, max_num+1)] + [f"B{i}" for i in range(1, max_num+1)]
-
+    planned = []
     for img_path, label in zip(images, labels):
         folder, old_name = os.path.split(img_path)
         ext = os.path.splitext(old_name)[1]
         new_name = f"{prefix}_{label}{ext}"
         new_path = os.path.join(folder, new_name)
+        planned.append((img_path, new_path, old_name, new_name))
 
-        os.rename(img_path, new_path)
-        print(f"Renamed: {old_name} → {new_name}")
+    def same_path(left, right):
+        return os.path.normcase(os.path.abspath(left)) == os.path.normcase(os.path.abspath(right))
+
+    sources = {os.path.normcase(os.path.abspath(src)) for src, _, _, _ in planned}
+    for src, dst, old_name, new_name in planned:
+        if same_path(src, dst):
+            continue
+        if os.path.exists(dst) and os.path.normcase(os.path.abspath(dst)) not in sources:
+            print(f"Cannot rename {old_name}: {new_name} already exists.")
+            return
+
+    # Move everything aside first so names inside the batch can swap without a collision
+    staging = []
+    finished = []
+    try:
+        for index, (src, dst, old_name, new_name) in enumerate(planned):
+            if same_path(src, dst):
+                print(f"Already named: {old_name}")
+                continue
+            temporary = os.path.join(os.path.dirname(src), f".rename_tmp_{index}_{old_name}")
+            os.rename(src, temporary)
+            staging.append((src, temporary, dst, old_name, new_name))
+
+        for src, temporary, dst, old_name, new_name in staging:
+            os.rename(temporary, dst)
+            finished.append((temporary, dst))
+            print(f"Renamed: {old_name} → {new_name}")
+    except OSError as exc:
+        print(f"Rename failed ({exc}). Restoring original file names.")
+        for temporary, dst in reversed(finished):
+            if os.path.exists(dst) and not os.path.exists(temporary):
+                os.rename(dst, temporary)
+        for src, temporary, _, _, _ in reversed(staging):
+            if os.path.exists(temporary) and not os.path.exists(src):
+                os.rename(temporary, src)
 
 if __name__ == "__main__":
     main()
